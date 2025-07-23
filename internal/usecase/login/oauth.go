@@ -66,16 +66,17 @@ func (l *OAuthLoginUsecase) getOrCreateVerifiedUser(ctx context.Context, input l
 	oauth, err := l.authAccount.GetOAuthAccountByProviderAndProviderID(ctx, input.Provider, userInfo.ProviderID)
 	if err != nil {
 		if errors.Is(err, errcode.ErrNotFound) { // If the OAuth account does not exist, create a new one
-			signupResponse, err := l.signupApi.OAuthSignup(input.Provider, oauthAccessToken) // Request signup API to create a new user
+			_, err := l.signupApi.OAuthSignup(input.Provider, oauthAccessToken) // Request signup API to create a new user
 			if err != nil {
 				return uuid.Nil, err
 			}
-			userUID, err := uuid.Parse(signupResponse.UserID)
+			// Retry to get the newly created OAuth account
+			oauth, err := l.authAccount.GetOAuthAccountByProviderAndProviderID(ctx, input.Provider, userInfo.ProviderID)
 			if err != nil {
-				return uuid.Nil, errors.Upgrade(err, "Failed to parse user ID from signup response", errcode.ErrInternalFailure)
+				return uuid.Nil, errors.Upgrade(err, "Failed to get newly created OAuth account", errcode.ErrInternalFailure)
 			}
-			userID = userUID
-			verified = signupResponse.IsVerified
+			userID = oauth.UserID
+			verified = oauth.IsVerified
 		} else {
 			return uuid.Nil, errors.Upgrade(err, "Failed to get OAuth account", errcode.ErrInternalFailure)
 		}
