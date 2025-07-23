@@ -1,0 +1,53 @@
+name: Build and Push on Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  APP_NAME: ${{ vars.APP_NAME }}
+  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
+  DOCKER_REPOSITORY: ${{ vars.DOCKER_REPOSITORY }}
+  VERSION: ${{ github.ref_name }}
+
+jobs:
+  build-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Docker build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPOSITORY }}/${{ env.APP_NAME }}:${{ env.VERSION }}
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPOSITORY }}/${{ env.APP_NAME }}:cache
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_REPOSITORY }}/${{ env.APP_NAME }}:cache,mode=max
+
+      - name: Logout from Docker Registry
+        run: docker logout ${{ env.DOCKER_REGISTRY }}
+        if: always()
+
+      - name: Notify on Success
+        if: success()
+        run: echo "Docker image for ${{ matrix.service }} successfully built and pushed with version ${{ env.VERSION }}."
+
+      - name: Notify on Failure
+        if: failure()
+        run: echo "Failed to build or push Docker image for ${{ matrix.service }} with version ${{ env.VERSION }}."
