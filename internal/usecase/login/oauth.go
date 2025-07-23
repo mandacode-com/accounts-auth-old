@@ -76,8 +76,9 @@ func (l *OAuthLoginUsecase) getOrCreateVerifiedUser(ctx context.Context, input l
 			}
 			userID = userUID
 			verified = signupResponse.IsVerified
+		} else {
+			return uuid.Nil, errors.Upgrade(err, "Failed to get OAuth account", errcode.ErrInternalFailure)
 		}
-		return uuid.Nil, errors.Upgrade(err, "Failed to get OAuth account", errcode.ErrInternalFailure)
 	} else {
 		userID = oauth.UserID
 		verified = oauth.IsVerified
