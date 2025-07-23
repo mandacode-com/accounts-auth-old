@@ -35,7 +35,7 @@ func (l *CodeManager) IssueCode(ctx context.Context, userID uuid.UUID) (string, 
 
 	key := l.prefix + code
 
-	err = l.codeStore.Set(ctx, key, userID, l.codeTTL).Err()
+	err = l.codeStore.Set(ctx, key, userID.String(), l.codeTTL).Err()
 	if err != nil {
 		return "", err
 	}
