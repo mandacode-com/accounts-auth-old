@@ -50,10 +50,12 @@ func (o *OAuthUserHandler) CreateOAuthUser(ctx context.Context, req *authv1.Crea
 	}
 
 	return &authv1.CreateOAuthUserResponse{
-		UserId:    createdUser.UserID.String(),
-		Provider:  req.Provider,
-		Email:     createdUser.Email,
-		CreatedAt: timestamppb.Now(),
+		UserId:     createdUser.UserID.String(),
+		Provider:   req.Provider,
+		ProviderId: createdUser.ProviderID,
+		Email:      createdUser.Email,
+		Verified:   createdUser.IsVerified,
+		CreatedAt:  timestamppb.Now(),
 	}, nil
 }
 
@@ -81,6 +83,7 @@ func (o *OAuthUserHandler) DeleteOAuthUser(ctx context.Context, req *authv1.Dele
 
 	return &authv1.DeleteOAuthUserResponse{
 		UserId:    req.UserId,
+		Provider:  req.Provider,
 		DeletedAt: timestamppb.Now(),
 	}, nil
 }
