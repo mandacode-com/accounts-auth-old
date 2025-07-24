@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	grpcmiddleware "mandacode.com/accounts/auth/internal/middleware/grpc"
 )
 
 type GRPCServer struct {
@@ -29,7 +30,9 @@ func NewGRPCServer(
 	oauthUserHandler authv1.OAuthUserServiceServer,
 	servingServices []string,
 ) (server.Server, error) {
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcmiddleware.ErrorHandlerInterceptor(logger)),
+	)
 
 	// Register health check service
 	healthServer := health.NewServer()
