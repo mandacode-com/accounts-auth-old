@@ -8,8 +8,6 @@ import (
 	"github.com/mandacode-com/golib/errors"
 	"github.com/mandacode-com/golib/errors/errcode"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"mandacode.com/accounts/auth/internal/usecase/authuser"
 )
@@ -23,23 +21,17 @@ type LocalUserHandler struct {
 // UpdateEmailVerification implements authv1.LocalUserServiceServer.
 func (l *LocalUserHandler) UpdateEmailVerification(ctx context.Context, req *authv1.UpdateEmailVerificationRequest) (*authv1.UpdateEmailVerificationResponse, error) {
 	if err := req.Validate(); err != nil {
-		l.logger.Error("UpdateEmailVerification request validation failed", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, errors.Upgrade(err, "UpdateEmailVerification request validation failed", errcode.ErrInvalidFormat)
 	}
 
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		l.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	err = l.userUsecase.UpdateLocalEmailVerificationStatus(ctx, userID, req.Verified)
 	if err != nil {
-		l.logger.Error("Failed to update email verification status", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to update email verification status: %v", err)
+		return nil, err
 	}
 
 	return &authv1.UpdateEmailVerificationResponse{
@@ -52,23 +44,17 @@ func (l *LocalUserHandler) UpdateEmailVerification(ctx context.Context, req *aut
 // CreateLocalUser implements authv1.LocalUserServiceServer.
 func (l *LocalUserHandler) CreateLocalUser(ctx context.Context, req *authv1.CreateLocalUserRequest) (*authv1.CreateLocalUserResponse, error) {
 	if err := req.Validate(); err != nil {
-		l.logger.Error("CreateLocalUser request validation failed", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, errors.Upgrade(err, "CreateLocalUser request validation failed", errcode.ErrInvalidFormat)
 	}
 
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		l.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	createdUser, err := l.userUsecase.CreateLocalAuthUser(ctx, userID, req.Email, req.Password)
 	if err != nil {
-		l.logger.Error("Failed to create local user", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to create local user: %v", err)
+		return nil, err
 	}
 
 	return &authv1.CreateLocalUserResponse{
@@ -79,19 +65,18 @@ func (l *LocalUserHandler) CreateLocalUser(ctx context.Context, req *authv1.Crea
 
 // DeleteLocalUser implements authv1.LocalUserServiceServer.
 func (l *LocalUserHandler) DeleteLocalUser(ctx context.Context, req *authv1.DeleteLocalUserRequest) (*authv1.DeleteLocalUserResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, errors.Upgrade(err, "DeleteLocalUser request validation failed", errcode.ErrInvalidFormat)
+	}
+
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		l.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	err = l.userUsecase.DeleteAuthUser(ctx, userID)
 	if err != nil {
-		l.logger.Error("Failed to delete local user", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to delete local user: %v", err)
+		return nil, err
 	}
 
 	return &authv1.DeleteLocalUserResponse{
@@ -103,23 +88,17 @@ func (l *LocalUserHandler) DeleteLocalUser(ctx context.Context, req *authv1.Dele
 // UpdateLocalUserEmail implements authv1.LocalUserServiceServer.
 func (l *LocalUserHandler) UpdateLocalUserEmail(ctx context.Context, req *authv1.UpdateLocalUserEmailRequest) (*authv1.UpdateLocalUserEmailResponse, error) {
 	if err := req.Validate(); err != nil {
-		l.logger.Error("UpdateLocalUserEmail request validation failed", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, errors.Upgrade(err, "UpdateLocalUserEmail request validation failed", errcode.ErrInvalidFormat)
 	}
 
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		l.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	updatedUser, err := l.userUsecase.UpdateAuthUserEmail(ctx, userID, req.NewEmail)
 	if err != nil {
-		l.logger.Error("Failed to update local user email", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to update local user email: %v", err)
+		return nil, err
 	}
 
 	return &authv1.UpdateLocalUserEmailResponse{

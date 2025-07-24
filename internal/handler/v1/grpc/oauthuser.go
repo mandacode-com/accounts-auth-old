@@ -8,8 +8,6 @@ import (
 	"github.com/mandacode-com/golib/errors"
 	"github.com/mandacode-com/golib/errors/errcode"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"mandacode.com/accounts/auth/internal/usecase/authuser"
 	"mandacode.com/accounts/auth/internal/util"
@@ -24,29 +22,22 @@ type OAuthUserHandler struct {
 // CreateOAuthUser implements authv1.OAuthUserServiceServer.
 func (o *OAuthUserHandler) CreateOAuthUser(ctx context.Context, req *authv1.CreateOAuthUserRequest) (*authv1.CreateOAuthUserResponse, error) {
 	if err := req.Validate(); err != nil {
-		o.logger.Error("CreateOAuthUser request validation failed", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, errors.Upgrade(err, "CreateOAuthUser request validation failed", errcode.ErrInvalidFormat)
 	}
 
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		o.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	entProvider, err := util.FromProtoToEnt(req.Provider)
 	if err != nil {
-		o.logger.Error("Failed to convert provider from proto to ent", zap.Error(err), zap.String("provider", req.Provider.String()))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid provider: %v", err)
+		return nil, err
 	}
 
 	createdUser, err := o.userUsecase.CreateOAuthUser(ctx, userID, entProvider, req.AccessToken, req.Code)
 	if err != nil {
-		o.logger.Error("Failed to create OAuth user", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to create OAuth user: %v", err)
+		return nil, err
 	}
 
 	return &authv1.CreateOAuthUserResponse{
@@ -62,23 +53,17 @@ func (o *OAuthUserHandler) CreateOAuthUser(ctx context.Context, req *authv1.Crea
 // DeleteOAuthUser implements authv1.OAuthUserServiceServer.
 func (o *OAuthUserHandler) DeleteOAuthUser(ctx context.Context, req *authv1.DeleteOAuthUserRequest) (*authv1.DeleteOAuthUserResponse, error) {
 	if err := req.Validate(); err != nil {
-		o.logger.Error("DeleteOAuthUser request validation failed", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, errors.Upgrade(err, "DeleteOAuthUser request validation failed", errcode.ErrInvalidFormat)
 	}
 
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		o.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	err = o.userUsecase.DeleteOAuthUser(ctx, userID)
 	if err != nil {
-		o.logger.Error("Failed to delete OAuth user", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to delete OAuth user: %v", err)
+		return nil, err
 	}
 
 	return &authv1.DeleteOAuthUserResponse{
@@ -91,29 +76,22 @@ func (o *OAuthUserHandler) DeleteOAuthUser(ctx context.Context, req *authv1.Dele
 // SyncOAuthUser implements authv1.OAuthUserServiceServer.
 func (o *OAuthUserHandler) SyncOAuthUser(ctx context.Context, req *authv1.SyncOAuthUserRequest) (*authv1.SyncOAuthUserResponse, error) {
 	if err := req.Validate(); err != nil {
-		o.logger.Error("SyncOAuthUser request validation failed", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, errors.Upgrade(err, "SyncOAuthUser request validation failed", errcode.ErrInvalidFormat)
 	}
 
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		o.logger.Error("Invalid user ID format", zap.Error(err), zap.String("user_id", req.UserId))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %v", err)
+		return nil, errors.Upgrade(err, "Invalid user ID format", errcode.ErrInvalidFormat)
 	}
 
 	entProvider, err := util.FromProtoToEnt(req.Provider)
 	if err != nil {
-		o.logger.Error("Failed to convert provider from proto to ent", zap.Error(err), zap.String("provider", req.Provider.String()))
-		return nil, status.Errorf(codes.InvalidArgument, "invalid provider: %v", err)
+		return nil, errors.Upgrade(err, "Invalid provider format", errcode.ErrInvalidFormat)
 	}
 
 	updatedUser, err := o.userUsecase.SyncOAuthUser(ctx, userID, entProvider, req.AccessToken, req.Code)
 	if err != nil {
-		o.logger.Error("Failed to sync OAuth user", zap.Error(err), zap.String("user_id", req.UserId))
-		if appErr, ok := err.(*errors.AppError); ok {
-			return nil, status.Errorf(errcode.MapCodeToGRPC(appErr.Code()), appErr.Public())
-		}
-		return nil, status.Errorf(codes.Internal, "failed to sync OAuth user: %v", err)
+		return nil, err
 	}
 	return &authv1.SyncOAuthUserResponse{
 		UserId:   updatedUser.UserID.String(),
